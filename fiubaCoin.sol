@@ -12,10 +12,8 @@ contract fiubaCoin {
     
     struct Apuesta {
         gambleOption eleccion;
-        uint dinero;
+        int dinero;
     }
-
-    // mapping (address => Person) public participants;
 
     address public creator;
     uint public createdAt;
@@ -26,24 +24,23 @@ contract fiubaCoin {
     Apuesta private apuesta01;
     Apuesta private apuesta02;
 
-    mapping (address => uint) public balances;
+    mapping (address => int) public balances;
 
-    event Sent(address from, address to, uint amount);
+    event Sent(address from, address to, int amount);
 
     constructor() public payable {
         creator = msg.sender;
         createdAt = now;
-        // Da el timestamp de la blockchain.. lo cual es dudoso, pero no hay forma de obtener un time real..
         balances[msg.sender] = 10000;
     }
 
-    function mint(address receiver, uint amount) public {
+    function mint(address receiver, int amount) public {
         if (msg.sender != creator) return;
         balances[receiver] += amount;
     }
 
-    function transfer(address sender, address receiver, uint amount) internal {
-        // if (balances[msg.sender] < amount) return; Se aceptan numeros negativos en los balances
+    function transfer(address sender, address receiver, int amount) internal {
+        require(amount > 0, "Transferencias deben ser con montos positivos");
         balances[sender] -= amount;
         balances[receiver] += amount;
         emit Sent(sender, receiver, amount);
@@ -60,8 +57,9 @@ contract fiubaCoin {
         gambler02 = Person({cuil: cuil02, nombre: name02, blockDir: blockDir02});
     }
 
-    function apostar(uint money, gambleOption election) public payable {
+    function apostar(int money, gambleOption election) public payable {
         require(election == gambleOption.PIEDRA || election == gambleOption.PAPEL || election == gambleOption.TIJERA, "La eleccion no es valida");
+        require(money > 0, "Las apuestas deben ser positivas");
         Apuesta memory entrante = Apuesta({eleccion: election, dinero: money});
         if(msg.sender == gambler01.blockDir) {
             apuesta01 = entrante;
@@ -92,13 +90,15 @@ contract fiubaCoin {
         if(first == gambleOption.TIJERA && second == gambleOption.PIEDRA) {
             return false;
         }
+        // En caso de empate gana el primero en apostar
+        return true;
     }
     
     function resolveGamble() internal {
         if(apuesta01.dinero > 0 && apuesta02.dinero > 0) {
             address sender;
             address receiver;
-            uint cash;
+            int cash;
             if(resolveGame(apuesta01.eleccion, apuesta02.eleccion)) {
                 sender = gambler02.blockDir;
                 receiver = gambler01.blockDir;
